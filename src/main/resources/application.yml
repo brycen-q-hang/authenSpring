@@ -1,0 +1,31 @@
+spring:
+  application:
+    name: SEC_PUBDIS
+
+  datasource:
+    # URL kết nối đến database MySQL (Thay thế 'your_database_name')
+    url: jdbc:mysql://localhost:3306/db_example
+    username: root
+    password: 123456a@
+    driver-class-name: com.mysql.cj.jdbc.Driver # Driver class đã được thêm trong build.gradle
+
+  jpa:
+    hibernate:
+      # Tùy chọn: tự động tạo/cập nhật schema DB
+      ddl-auto: update 
+    show-sql: true # Tùy chọn: hiển thị các truy vấn SQL trong log
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
+        '[format_sql]': true
+  
+  flyway:
+    enabled: false
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+  
+  security:
+    user:
+      name: admin
+      password: 123456
+      roles: ADMIN

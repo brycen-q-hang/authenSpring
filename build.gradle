@@ -1,0 +1,81 @@
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '3.5.6'
+	id 'io.spring.dependency-management' version '1.1.7'
+}
+
+group = 'com.example'
+version = '0.0.1-SNAPSHOT'
+description = 'Demo project for Spring Boot'
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(21)
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	// AWS SDK (DynamoDB) (Ver 2.25.0)
+    implementation platform('software.amazon.awssdk:bom:2.25.0')
+    implementation 'software.amazon.awssdk:dynamodb'
+
+    // Email (AWS SES SMTP) (Ver 3.2.0)
+    implementation 'org.springframework.boot:spring-boot-starter-mail'
+
+    // Database (Aurora MySQL + JPA + Hibernate + Flyway)
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.flywaydb:flyway-core:9.22.3'
+    implementation 'mysql:mysql-connector-java:8.0.33'
+
+    // Security & JWT Ver (Ver 3.2.0)
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
+
+    // Web (Ver 3.2.0)
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+
+    // Batch processing
+    implementation 'org.springframework.boot:spring-boot-starter-batch'
+    runtimeOnly 'com.h2database:h2:2.2.224'
+
+    // Lombok (latest stable)
+    compileOnly 'org.projectlombok:lombok:1.18.32'
+    annotationProcessor 'org.projectlombok:lombok:1.18.32'
+    testCompileOnly 'org.projectlombok:lombok:1.18.32'
+    testAnnotationProcessor 'org.projectlombok:lombok:1.18.32'
+
+    // MapStruct (latest stable)
+    implementation 'org.mapstruct:mapstruct:1.5.5.Final'
+    annotationProcessor 'org.mapstruct:mapstruct-processor:1.5.5.Final'
+
+    // Dev tools (hot reload)
+    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+
+    // Testing
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.10.0'
+
+    //validation
+    implementation 'org.springframework.boot:spring-boot-starter-validation' 
+
+    // 1. Thư viện JWT Core API
+    implementation 'io.jsonwebtoken:jjwt-api:0.12.5' // Sử dụng phiên bản ổn định mới nhất
+
+    // 2. Implementation (Parser và Builder)
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.5' 
+
+    // 3. JSON Processor (Sử dụng Jackson nếu bạn dùng Spring Boot, nó đã có sẵn)
+    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.5'
+
+    implementation 'com.auth0:java-jwt:4.4.0'
+
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.5.0'
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}
