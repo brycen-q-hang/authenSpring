@@ -26,11 +26,12 @@ public class SecutiryConfigurations {
         return httpSecurity
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests(authorize -> authorize
                         // public auth endpoints
                         .requestMatchers(HttpMethod.POST, "/auth/login").permitAll()
                         .requestMatchers(HttpMethod.POST, "/auth/register").permitAll()
+                        // logout requires authentication
+                        .requestMatchers(HttpMethod.POST, "/auth/logout").authenticated()
                         // openapi / swagger (public)
                         .requestMatchers(
                                 "/v3/api-docs/**",
@@ -42,6 +43,8 @@ public class SecutiryConfigurations {
                                 "/swagger-resources/**")
                         .permitAll()
                         .anyRequest().authenticated())
+                // Thêm filter AFTER authorization configuration
+                .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
 
@@ -55,5 +58,4 @@ public class SecutiryConfigurations {
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
-
 }

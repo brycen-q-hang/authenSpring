@@ -6,7 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -18,8 +18,13 @@ import com.example.Test.intities.users.dtos.AuthenticationDTO;
 import com.example.Test.intities.users.dtos.LoginResponseDTO;
 import com.example.Test.intities.users.dtos.RegisterDTO;
 import com.example.Test.repositories.UserRepository;
+
+import jakarta.servlet.http.HttpServletResponse;
+
 import com.example.Test.repositories.SessionRepository;
 import com.example.Test.intities.sessions.Session;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 
 @RestController
 @RequestMapping(value = "/auth", produces = { "application/json" })
@@ -43,14 +48,16 @@ public class AuthenticationController {
      * @return ResponseEntity containing authentication token
      */
     @PostMapping(value = "/login", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<LoginResponseDTO> login(@RequestBody AuthenticationDTO data) {
-        var credentials = new UsernamePasswordAuthenticationToken(data.email(), data.password());
+    public ResponseEntity<LoginResponseDTO> login(@RequestBody AuthenticationDTO data, HttpServletResponse response) {
+        var credentials = new UsernamePasswordAuthenticationToken(data.email(),
+                data.password());
         org.springframework.security.core.Authentication auth;
         try {
             auth = this.authenticationManager.authenticate(credentials);
         } catch (org.springframework.security.core.AuthenticationException ex) {
             // Log the exception to help debugging and return 401 to client
-            System.err.println("Authentication failed for user=" + data.email() + ": " + ex.getMessage());
+            System.err.println("Authentication failed for user=" + data.email() + ": " +
+                    ex.getMessage());
             return ResponseEntity.status(401).build();
         }
 
@@ -60,11 +67,34 @@ public class AuthenticationController {
         var tokenData = tokenService.validateToken(token);
         var user = (User) auth.getPrincipal();
         if (tokenData != null) {
-            Session session = new Session(token, user, java.time.Instant.now(), tokenData.expiresAt(), false);
+            Session session = new Session(token, user, java.time.Instant.now(),
+                    tokenData.expiresAt(), false);
             sessionRepository.save(session);
         }
 
-        return ResponseEntity.ok(new LoginResponseDTO(token));
+        // Tạo cookie với token
+        Cookie authCookie = new Cookie("auth_token", token);
+        authCookie.setHttpOnly(true); // Chống XSS - JavaScript không đọc được
+        authCookie.setSecure(false); // Đặt true nếu dùng HTTPS (development: false)
+        authCookie.setPath("/"); // Có sẵn cho tất cả paths
+        authCookie.setMaxAge(60 * 60 * 24); // 24 hours (tính bằng giây)
+        // authCookie.setAttribute("SameSite", "Lax"); // Cho Spring Boot 3.x+
+
+        response.addCookie(authCookie);
+
+        System.out.println("✅ Token saved to cookie: " + token.substring(0, Math.min(20, token.length())) + "...");
+
+        // return ResponseEntity.ok(new LoginResponseDTO(token, user.getRole()));
+        String permissions = "1"; // Placeholder for permissions
+        String office = "Headquarters"; // Placeholder for office
+        LoginResponseDTO loginResponse = new LoginResponseDTO(
+                token,
+                office,
+                user.getRole().toString(),
+                permissions,
+                tokenData.expiresAt().toString());
+
+        return ResponseEntity.ok(loginResponse);
     }
 
     /**
@@ -86,18 +116,59 @@ public class AuthenticationController {
     }
 
     @PostMapping(value = "/logout")
-    public ResponseEntity<?> logout(@RequestHeader(name = "Authorization", required = false) String authorization) {
-        if (authorization == null || !authorization.startsWith("Bearer "))
-            return ResponseEntity.badRequest().build();
+    public ResponseEntity<?> logout(
+            @CookieValue(name = "auth_token", required = false) String token,
+            HttpServletRequest request,
+            HttpServletResponse response) {
 
-        String token = authorization.replace("Bearer ", "");
-        var opt = sessionRepository.findByToken(token);
-        if (opt.isPresent()) {
-            var session = opt.get();
-            session.setRevoked(true);
-            sessionRepository.save(session);
+        System.out.println("=== LOGOUT API CALLED ===");
+
+        // Ưu tiên dùng token từ @CookieValue, nếu không có thì tìm trong cookies
+        if (token == null) {
+            Cookie[] cookies = request.getCookies();
+            if (cookies != null) {
+                for (Cookie cookie : cookies) {
+                    if ("auth_token".equals(cookie.getName())) {
+                        token = cookie.getValue();
+                        break;
+                    }
+                }
+            }
         }
 
-        return ResponseEntity.ok().build();
+        System.out.println("Token from cookie: "
+                + (token != null ? token.substring(0, Math.min(10, token.length())) + "..." : "NULL"));
+
+        if (token == null) {
+            System.out.println("❌ No authentication token found in cookies");
+            return ResponseEntity.status(401).body("No authentication token found");
+        }
+
+        try {
+            var opt = sessionRepository.findByToken(token);
+            if (opt.isPresent()) {
+                var session = opt.get();
+                session.setRevoked(true);
+                sessionRepository.save(session);
+                System.out.println("✅ Logout successful for user: " + session.getUser().getEmail());
+            } else {
+                System.out.println("❌ Session not found for token");
+            }
+
+            // XÓA COOKIE
+            Cookie authCookie = new Cookie("auth_token", null);
+            authCookie.setHttpOnly(true);
+            authCookie.setSecure(false);
+            authCookie.setPath("/");
+            authCookie.setMaxAge(0);
+            response.addCookie(authCookie);
+
+            System.out.println("✅ Cookie cleared successfully");
+
+            return ResponseEntity.ok().body("Logged out successfully");
+        } catch (Exception e) {
+            System.err.println("❌ Logout error: " + e.getMessage());
+            return ResponseEntity.status(500).body("Logout failed");
+        }
     }
 }
