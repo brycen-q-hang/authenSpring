@@ -51,7 +51,7 @@ public class User implements UserDetails {
         roles.add(new SimpleGrantedAuthority("ROLE_USER"));
 
         if (this.role == UserRole.ADMIN)
-            roles.add(new SimpleGrantedAuthority("ROLES_ADMIN"));
+            roles.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
 
         return roles;
     }

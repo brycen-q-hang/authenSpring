@@ -20,7 +20,8 @@ public class TokenService {
     @Value("${api.security.token.secret}")
     private String secret;
 
-    public record TokenData(String subject, Instant expiresAt) {}
+    public record TokenData(String subject, Instant expiresAt) {
+    }
 
     public String generateToken(User user) {
         try {
@@ -38,7 +39,8 @@ public class TokenService {
     }
 
     /**
-     * Validate token and return TokenData (subject and expiration) or null if invalid.
+     * Validate token and return TokenData (subject and expiration) or null if
+     * invalid.
      */
     public TokenData validateToken(String token) {
         try {
